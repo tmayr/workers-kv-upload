@@ -26,9 +26,6 @@ type KVUploader struct {
 	api *cloudflare.API
 }
 
-var basePath = "public"
-var KV_NAMESPACE = "hugo22"
-
 func (kvu *KVUploader) buildFilesMap(basePath string) (KVFiles, error) {
 	var files = KVFiles{}
 
@@ -112,12 +109,12 @@ func main() {
 		api: cf,
 	}
 
-	files, err := kvu.buildFilesMap(basePath)
+	files, err := kvu.buildFilesMap(os.Getenv("TARGET_DIRECTORY"))
 	if err != nil {
 		log.Fatalf("error walking the path: %v", err)
 	}
 
-	namespace, err := kvu.findOrCreateNamespace(KV_NAMESPACE)
+	namespace, err := kvu.findOrCreateNamespace(os.Getenv("CF_KV_NAMESPACE"))
 	if err != nil {
 		log.Fatalf("error while finding or creating namespace %v", err)
 	}

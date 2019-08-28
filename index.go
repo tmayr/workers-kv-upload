@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/base64"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io/ioutil"
 	"log"
@@ -28,6 +29,7 @@ type KVUploader struct {
 
 func (kvu *KVUploader) buildFilesMap(basePath string) (KVFiles, error) {
 	var files = KVFiles{}
+	// check if path exists
 
 	err := filepath.Walk(basePath, func(path string, info os.FileInfo, err error) error {
 		if info.IsDir() == false {
@@ -99,7 +101,35 @@ func (kvu *KVUploader) findOrCreateNamespace(namespaceName string) (cloudflare.W
 	return namespace, nil
 }
 
+func validateEnvironmentVariables(variableKeys []string) error {
+	var err string
+	for _, key := range variableKeys {
+		if _, ok := os.LookupEnv(key); !ok {
+			err = err + fmt.Sprintf("%v not found\n", key)
+		}
+	}
+
+	if len(err) > 0 {
+		return errors.New(err)
+	}
+
+	return nil
+}
+
 func main() {
+	requiredEnvVars := []string{
+		"CF_API_KEY",
+		"CF_API_EMAIL",
+		"TARGET_DIRECTORY",
+		"CF_API_ACCOUNT_ID",
+		"CF_KV_NAMESPACE",
+	}
+
+	err := validateEnvironmentVariables(requiredEnvVars)
+	if err != nil {
+		log.Fatalf("missing required env vars %v", err)
+	}
+
 	cf, err := cloudflare.New(os.Getenv("CF_API_KEY"), os.Getenv("CF_API_EMAIL"), cloudflare.UsingAccount(os.Getenv("CF_API_ACCOUNT_ID")))
 	if err != nil {
 		log.Fatalf("error initializing cf client %v", err)

@@ -79,14 +79,14 @@ func (kvu *KVUploader) findOrCreateNamespace(namespaceName string) (cloudflare.W
 	}
 
 	for _, value := range res.Result {
-		if value.Title == KV_NAMESPACE {
+		if value.Title == namespaceName {
 			namespace = value
 		}
 	}
 
 	if namespace.ID == "" {
-		fmt.Printf("Namespace not found, creating %v", KV_NAMESPACE)
-		req := &cloudflare.WorkersKVNamespaceRequest{Title: KV_NAMESPACE}
+		fmt.Printf("Namespace not found, creating %v", namespaceName)
+		req := &cloudflare.WorkersKVNamespaceRequest{Title: namespaceName}
 		res, err := kvu.api.CreateWorkersKVNamespace(context.Background(), req)
 
 		if err != nil {

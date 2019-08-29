@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/base64"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"io/ioutil"
 	"log"
@@ -14,6 +13,7 @@ import (
 	"strings"
 
 	"github.com/cloudflare/cloudflare-go"
+	"github.com/pkg/errors"
 )
 
 type KVFile struct {
@@ -29,14 +29,18 @@ type KVUploader struct {
 
 func (kvu *KVUploader) buildFilesMap(basePath string) (KVFiles, error) {
 	var files = KVFiles{}
-	// check if path exists
 
-	err := filepath.Walk(basePath, func(path string, info os.FileInfo, err error) error {
+	_, err := os.Stat(basePath)
+	if err != nil {
+		return nil, errors.Wrap(err, "path not found")
+	}
+
+	err = filepath.Walk(basePath, func(path string, info os.FileInfo, err error) error {
 		if info.IsDir() == false {
 			file, err := ioutil.ReadFile(path)
 
 			if err != nil {
-				log.Fatalf("error while reading file %v %v", path, err)
+				return errors.Wrap(err, "error while reading file")
 			}
 
 			fileString := base64.StdEncoding.EncodeToString(file)
@@ -60,12 +64,12 @@ func (kvu *KVUploader) uploadJSONToWorkersKV(namespaceID string, files KVFiles) 
 
 		payload, err := json.Marshal(file)
 		if err != nil {
-			log.Fatalf("error marshaling file %v \n %v", k, err)
+			return errors.Wrap(err, "error marshaling file definition")
 		}
 
 		_, err = kvu.api.WriteWorkersKV(context.Background(), namespaceID, k, payload)
 		if err != nil {
-			log.Fatalf("error while creating KV %v %v", k, err)
+			return errors.Wrap(err, "error while creating KV")
 		}
 	}
 
@@ -77,7 +81,7 @@ func (kvu *KVUploader) findOrCreateNamespace(namespaceName string) (cloudflare.W
 
 	res, err := kvu.api.ListWorkersKVNamespaces(context.Background())
 	if err != nil {
-		log.Fatalf("error getting the list of namespaces %v", err)
+		return namespace, errors.Wrap(err, "error getting the list of namespace")
 	}
 
 	for _, value := range res.Result {
@@ -92,7 +96,7 @@ func (kvu *KVUploader) findOrCreateNamespace(namespaceName string) (cloudflare.W
 		res, err := kvu.api.CreateWorkersKVNamespace(context.Background(), req)
 
 		if err != nil {
-			log.Fatalf("error with creating namespace %v", err)
+			return namespace, errors.Wrap(err, "error with creating namespace")
 		}
 
 		namespace = res.Result

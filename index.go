@@ -27,15 +27,19 @@ type KVUploader struct {
 	api *cloudflare.API
 }
 
-func (kvu *KVUploader) buildFilesMap(basePath string) (KVFiles, error) {
+func (kvu *KVUploader) buildFilesMap(targetDirectoryPath string) (KVFiles, error) {
 	var files = KVFiles{}
 
-	_, err := os.Stat(basePath)
+	stat, err := os.Stat(targetDirectoryPath)
 	if err != nil {
 		return nil, errors.Wrap(err, "path not found")
 	}
 
-	err = filepath.Walk(basePath, func(path string, info os.FileInfo, err error) error {
+	if stat.IsDir() == false {
+		return nil, errors.New("path is not a directory: " + targetDirectoryPath)
+	}
+
+	err = filepath.Walk(targetDirectoryPath, func(path string, info os.FileInfo, err error) error {
 		if info.IsDir() == false {
 			file, err := ioutil.ReadFile(path)
 
@@ -44,7 +48,7 @@ func (kvu *KVUploader) buildFilesMap(basePath string) (KVFiles, error) {
 			}
 
 			fileString := base64.StdEncoding.EncodeToString(file)
-			pathWithoutBase := strings.Replace(path, basePath+"/", "", 1)
+			pathWithoutBase := strings.Replace(path, targetDirectoryPath+"/", "", 1)
 
 			files[pathWithoutBase] = KVFile{
 				Content:     fileString,
